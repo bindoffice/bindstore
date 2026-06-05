@@ -24,6 +24,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"mime"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -72,8 +73,11 @@ func isRequestPresignedSignatureV2(r *http.Request) bool {
 
 // Verify if request has AWS Post policy Signature Version '4'.
 func isRequestPostPolicySignatureV4(r *http.Request) bool {
-	return strings.Contains(r.Header.Get(xhttp.ContentType), "multipart/form-data") &&
-		r.Method == http.MethodPost
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get(xhttp.ContentType))
+	if err != nil {
+		return false
+	}
+	return mediaType == "multipart/form-data" && r.Method == http.MethodPost
 }
 
 // Verify if the request has AWS Streaming Signature Version '4'. This is only valid for 'PUT' operation.
