@@ -296,64 +296,64 @@ func getUserAgent(mode string) string {
 	return strings.Join(userAgentParts, "")
 }
 
+// CVE-2022-35919: server update must not read arbitrary local paths.
+func isUpdateURLHTTP(u *url.URL) bool {
+	return u.Scheme == "http" || u.Scheme == "https"
+}
+
 func downloadReleaseURL(u *url.URL, timeout time.Duration, mode string) (content string, err error) {
-	var reader io.ReadCloser
-	if u.Scheme == "https" || u.Scheme == "http" {
-		req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-		if err != nil {
-			return content, AdminError{
-				Code:       AdminUpdateUnexpectedFailure,
-				Message:    err.Error(),
-				StatusCode: http.StatusInternalServerError,
-			}
+	if !isUpdateURLHTTP(u) {
+		return content, AdminError{
+			Code:       AdminUpdateURLNotReachable,
+			Message:    fmt.Sprintf("Unsupported update URL scheme %q", u.Scheme),
+			StatusCode: http.StatusBadRequest,
 		}
-		req.Header.Set("User-Agent", getUserAgent(mode))
+	}
 
-		client := &http.Client{Transport: getUpdateTransport(timeout)}
-		resp, err := client.Do(req)
-		if err != nil {
-			if xnet.IsNetworkOrHostDown(err, false) {
-				return content, AdminError{
-					Code:       AdminUpdateURLNotReachable,
-					Message:    err.Error(),
-					StatusCode: http.StatusServiceUnavailable,
-				}
-			}
-			return content, AdminError{
-				Code:       AdminUpdateUnexpectedFailure,
-				Message:    err.Error(),
-				StatusCode: http.StatusInternalServerError,
-			}
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return content, AdminError{
+			Code:       AdminUpdateUnexpectedFailure,
+			Message:    err.Error(),
+			StatusCode: http.StatusInternalServerError,
 		}
-		if resp == nil {
-			return content, AdminError{
-				Code:       AdminUpdateUnexpectedFailure,
-				Message:    fmt.Sprintf("No response from server to download URL %s", u),
-				StatusCode: http.StatusInternalServerError,
-			}
-		}
-		reader = resp.Body
-		defer xhttp.DrainBody(resp.Body)
+	}
+	req.Header.Set("User-Agent", getUserAgent(mode))
 
-		if resp.StatusCode != http.StatusOK {
-			return content, AdminError{
-				Code:       AdminUpdateUnexpectedFailure,
-				Message:    fmt.Sprintf("Error downloading URL %s. Response: %v", u, resp.Status),
-				StatusCode: resp.StatusCode,
-			}
-		}
-	} else {
-		reader, err = os.Open(u.Path)
-		if err != nil {
+	client := &http.Client{Transport: getUpdateTransport(timeout)}
+	resp, err := client.Do(req)
+	if err != nil {
+		if xnet.IsNetworkOrHostDown(err, false) {
 			return content, AdminError{
 				Code:       AdminUpdateURLNotReachable,
 				Message:    err.Error(),
 				StatusCode: http.StatusServiceUnavailable,
 			}
 		}
+		return content, AdminError{
+			Code:       AdminUpdateUnexpectedFailure,
+			Message:    err.Error(),
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+	if resp == nil {
+		return content, AdminError{
+			Code:       AdminUpdateUnexpectedFailure,
+			Message:    fmt.Sprintf("No response from server to download URL %s", u),
+			StatusCode: http.StatusInternalServerError,
+		}
+	}
+	defer xhttp.DrainBody(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return content, AdminError{
+			Code:       AdminUpdateUnexpectedFailure,
+			Message:    fmt.Sprintf("Error downloading URL %s. Response: %v", u, resp.Status),
+			StatusCode: resp.StatusCode,
+		}
 	}
 
-	contentBytes, err := ioutil.ReadAll(reader)
+	contentBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return content, AdminError{
 			Code:       AdminUpdateUnexpectedFailure,
@@ -476,18 +476,6 @@ func getDownloadURL(releaseTag string) (downloadURL string) {
 	return minioReleaseURL + "minio"
 }
 
-func getUpdateReaderFromFile(u *url.URL) (io.ReadCloser, error) {
-	r, err := os.Open(u.Path)
-	if err != nil {
-		return nil, AdminError{
-			Code:       AdminUpdateUnexpectedFailure,
-			Message:    err.Error(),
-			StatusCode: http.StatusInternalServerError,
-		}
-	}
-	return r, nil
-}
-
 func getUpdateReaderFromURL(u *url.URL, transport http.RoundTripper, mode string) (io.ReadCloser, error) {
 	clnt := &http.Client{
 		Transport: transport,
@@ -522,18 +510,18 @@ func getUpdateReaderFromURL(u *url.URL, transport http.RoundTripper, mode string
 }
 
 func doUpdate(u *url.URL, lrTime time.Time, sha256Sum []byte, releaseInfo string, mode string) (err error) {
+	if !isUpdateURLHTTP(u) {
+		return AdminError{
+			Code:       AdminUpdateURLNotReachable,
+			Message:    fmt.Sprintf("Unsupported update URL scheme %q", u.Scheme),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
 	transport := getUpdateTransport(30 * time.Second)
-	var reader io.ReadCloser
-	if u.Scheme == "https" || u.Scheme == "http" {
-		reader, err = getUpdateReaderFromURL(u, transport, mode)
-		if err != nil {
-			return err
-		}
-	} else {
-		reader, err = getUpdateReaderFromFile(u)
-		if err != nil {
-			return err
-		}
+	reader, err := getUpdateReaderFromURL(u, transport, mode)
+	if err != nil {
+		return err
 	}
 
 	opts := selfupdate.Options{
