@@ -272,6 +272,19 @@ func TestDownloadReleaseData(t *testing.T) {
 		{httpServer3.URL, "", fmt.Errorf("Error downloading URL " + httpServer3.URL + ". Response: 404 Not Found")},
 	}
 
+	// CVE-2022-35919: local file paths must not be readable via update URL.
+	u, err := url.Parse("file:///etc/passwd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = downloadReleaseURL(u, 1*time.Second, "")
+	if err == nil {
+		t.Fatal("expected error for file:// update URL")
+	}
+	if !strings.Contains(err.Error(), "Unsupported update URL scheme") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
 	for _, testCase := range testCases {
 		u, err := url.Parse(testCase.releaseChecksumURL)
 		if err != nil {
