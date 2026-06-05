@@ -31,6 +31,37 @@ import (
 	"github.com/minio/minio/pkg/s3select/sql"
 )
 
+func TestReadRejectsOversizedLine(t *testing.T) {
+	// CVE-2026-39414: lines without newlines must not be buffered without bound.
+	content := strings.Repeat("a", maxCharsPerRecord+1)
+	r, err := NewReader(ioutil.NopCloser(strings.NewReader(content)), &ReaderArgs{
+		FileHeaderInfo:             none,
+		RecordDelimiter:            "\n",
+		FieldDelimiter:             ",",
+		QuoteCharacter:             defaultQuoteCharacter,
+		QuoteEscapeCharacter:       defaultQuoteEscapeCharacter,
+		CommentCharacter:           defaultCommentCharacter,
+		AllowQuotedRecordDelimiter: false,
+		unmarshaled:                true,
+	})
+	if err != nil {
+		t.Fatalf("NewReader failed: %v", err)
+	}
+	defer r.Close()
+
+	_, err = r.Read(nil)
+	if err == nil {
+		t.Fatal("expected error for oversized line")
+	}
+	s3Err, ok := err.(*s3Error)
+	if !ok {
+		t.Fatalf("expected *s3Error, got %T: %v", err, err)
+	}
+	if s3Err.ErrorCode() != "OverMaxRecordSize" {
+		t.Fatalf("expected OverMaxRecordSize, got %s", s3Err.ErrorCode())
+	}
+}
+
 func TestRead(t *testing.T) {
 	cases := []struct {
 		content         string
