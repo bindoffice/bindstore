@@ -2013,7 +2013,9 @@ func registerBucketLevelFunc(bucket *mux.Router, api objectAPIHandlers, apiFunct
 		switch apiFunction {
 		case "PostPolicy":
 			// Register PostPolicy handler.
-			bucket.Methods(http.MethodPost).HeadersRegexp("Content-Type", "multipart/form-data*").HandlerFunc(api.PostPolicyBucketHandler)
+			bucket.Methods(http.MethodPost).MatcherFunc(func(r *http.Request, _ *mux.RouteMatch) bool {
+				return isRequestPostPolicySignatureV4(r)
+			}).HandlerFunc(api.PostPolicyBucketHandler)
 		case "HeadObject":
 			// Register HeadObject handler.
 			bucket.Methods("Head").Path("/{object:.+}").HandlerFunc(api.HeadObjectHandler)
