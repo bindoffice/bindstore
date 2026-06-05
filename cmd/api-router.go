@@ -401,8 +401,10 @@ func registerAPIRouter(router *mux.Router) {
 		router.Methods(http.MethodHead).HandlerFunc(
 			collectAPIStats("headbucket", maxClients(httpTraceAll(api.HeadBucketHandler))))
 		// PostPolicy
-		router.Methods(http.MethodPost).HeadersRegexp(xhttp.ContentType, "multipart/form-data*").HandlerFunc(
-			collectAPIStats("postpolicybucket", maxClients(httpTraceHdrs(api.PostPolicyBucketHandler))))
+		// CVE-2023-28434: use strict post-policy detection, not loose Content-Type regex.
+		router.Methods(http.MethodPost).MatcherFunc(func(r *http.Request, _ *mux.RouteMatch) bool {
+			return isRequestPostPolicySignatureV4(r)
+		}).HandlerFunc(collectAPIStats("postpolicybucket", maxClients(httpTraceHdrs(api.PostPolicyBucketHandler))))
 		// DeleteMultipleObjects
 		router.Methods(http.MethodPost).HandlerFunc(
 			collectAPIStats("deletemultipleobjects", maxClients(httpTraceAll(api.DeleteMultipleObjectsHandler)))).Queries("delete", "")

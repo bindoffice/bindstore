@@ -126,6 +126,27 @@ func TestGetRequestAuthType(t *testing.T) {
 	}
 }
 
+// TestIsRequestPostPolicySignatureV4 - CVE-2023-28434: reject forged Content-Type values.
+func TestIsRequestPostPolicySignatureV4(t *testing.T) {
+	tests := []struct {
+		contentType string
+		want        bool
+	}{
+		{"multipart/form-data", true},
+		{"multipart/form-data; boundary=----", true},
+		{"multipart/form-data-evil", false},
+		{"application/x-multipart/form-data", false},
+		{"text/plain", false},
+	}
+	for i, tt := range tests {
+		req, _ := http.NewRequest(http.MethodPost, "/", nil)
+		req.Header.Set("Content-Type", tt.contentType)
+		if got := isRequestPostPolicySignatureV4(req); got != tt.want {
+			t.Errorf("case %d: Content-Type %q: got %v, want %v", i+1, tt.contentType, got, tt.want)
+		}
+	}
+}
+
 // Test all s3 supported auth types.
 func TestS3SupportedAuthType(t *testing.T) {
 	type testCase struct {
