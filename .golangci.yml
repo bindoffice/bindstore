@@ -1,35 +1,45 @@
-linters-settings:
-  golint:
-    min-confidence: 0
+# golangci-lint v2 config — preserves the linters from the original v1 file:
+# golint -> revive, gosimple -> staticcheck, deadcode/structcheck -> unused,
+# gofmt/goimports -> formatters, typecheck is always enabled in v2.
+version: "2"
 
+linters-settings:
+  revive:
+    min-confidence: 0
   misspell:
     locale: US
 
+run:
+  timeout: 10m
+  build-tags:
+    - kqueue
+
 linters:
-  disable-all: true
+  default: none
   enable:
-    - typecheck
-    - goimports
-    - misspell
     - govet
-    - golint
+    - misspell
     - ineffassign
-    - gosimple
-    - deadcode
-    - structcheck
+    - staticcheck
+    - unused
     - gomodguard
+    - revive
+  exclusions:
+    paths:
+      - pkg/rpc
+      - pkg/argon2
+    generated: lax
+
+formatters:
+  enable:
     - gofmt
+    - goimports
+  exclusions:
+    paths:
+      - pkg/rpc
+      - pkg/argon2
 
 issues:
-  exclude-use-default: false
-  exclude:
-      - should have a package comment
-      - error strings should not be capitalized or end with punctuation or a newline
-
-run:
-  skip-dirs:
-    - pkg/rpc
-    - pkg/argon2
-
-service:
-  golangci-lint-version: 1.20.0 # use the fixed version to not introduce new linters unexpectedly
+  exclude-rules:
+    - text: should have a package comment
+    - text: error strings should not be capitalized or end with punctuation or a newline
