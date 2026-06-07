@@ -5,6 +5,10 @@ LDFLAGS := $(shell go run buildscripts/gen-ldflags.go)
 GOARCH := $(shell go env GOARCH)
 GOOS := $(shell go env GOOS)
 
+# v2.4.0+ is required for Go 1.25 export data format support.
+GOLANGCI_VERSION ?= v2.4.0
+GOLANGCI_LINT := $(GOPATH)/bin/golangci-lint
+
 VERSION ?= $(shell git describe --tags)
 TAG ?= "minio/minio:$(VERSION)"
 
@@ -16,7 +20,10 @@ checks:
 
 getdeps:
 	@mkdir -p ${GOPATH}/bin
-	@which golangci-lint 1>/dev/null || (echo "Installing golangci-lint" && curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v1.27.0)
+	@if [ ! -x "$(GOLANGCI_LINT)" ] || ! $(GOLANGCI_LINT) version 2>/dev/null | grep -qE 'version 2\.'; then \
+		echo "Installing golangci-lint $(GOLANGCI_VERSION)"; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_VERSION); \
+	fi
 	@which msgp 1>/dev/null || (echo "Installing msgp" && go get github.com/tinylib/msgp@v1.1.3)
 	@which stringer 1>/dev/null || (echo "Installing stringer" && go get golang.org/x/tools/cmd/stringer)
 
@@ -31,8 +38,8 @@ check-gen:
 
 lint:
 	@echo "Running $@ check"
-	@GO111MODULE=on ${GOPATH}/bin/golangci-lint cache clean
-	@GO111MODULE=on ${GOPATH}/bin/golangci-lint run --build-tags kqueue --timeout=10m --config ./.golangci.yml
+	@GO111MODULE=on $(GOLANGCI_LINT) cache clean
+	@GO111MODULE=on $(GOLANGCI_LINT) run --config ./.golangci.yml
 
 # Builds minio, runs the verifiers then runs the tests.
 check: test
