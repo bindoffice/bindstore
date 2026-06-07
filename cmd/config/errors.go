@@ -155,6 +155,21 @@ var (
 		`In distributed server mode, access and secret keys should be specified via environment variables MINIO_ROOT_USER and MINIO_ROOT_PASSWORD respectively`,
 	)
 
+	ErrDefaultCredentialsNotAllowed = newErrFn(
+		"Default credentials are not allowed",
+		"Set strong root credentials before starting the server",
+		`Refusing to start with factory default credentials (minioadmin). Set MINIO_ROOT_USER and MINIO_ROOT_PASSWORD.
+For local development only, set MINIO_ALLOW_DEFAULT_CREDENTIALS=on`,
+	)
+
+	ErrPublicBindNotAllowed = newErrFn(
+		"Public API bind is not allowed",
+		"Bind to a specific address or explicitly allow listening on all interfaces",
+		`Refusing to listen on all interfaces (e.g. :9000 or 0.0.0.0:9000) without explicit approval.
+Use --address 127.0.0.1:9000 for local development, or bind to a private IP in production.
+When running in a container with restricted network access, set MINIO_ALLOW_PUBLIC_BIND=on`,
+	)
+
 	ErrInvalidErasureEndpoints = newErrFn(
 		"Invalid endpoint(s) in erasure mode",
 		"Please provide correct combination of local/remote paths",

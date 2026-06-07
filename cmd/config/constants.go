@@ -44,4 +44,8 @@ const (
 	EnvEndpoints = "MINIO_ENDPOINTS" // legacy
 	EnvWorm      = "MINIO_WORM"      // legacy
 	EnvRegion    = "MINIO_REGION"    // legacy
+
+	// Production hardening: explicit opt-in for insecure defaults.
+	EnvAllowDefaultCredentials = "MINIO_ALLOW_DEFAULT_CREDENTIALS"
+	EnvAllowPublicBind         = "MINIO_ALLOW_PUBLIC_BIND"
 )

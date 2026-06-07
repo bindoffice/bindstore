@@ -35,10 +35,8 @@ import (
 	xhttp "github.com/bindoffice/minio/cmd/http"
 	"github.com/bindoffice/minio/cmd/logger"
 	"github.com/bindoffice/minio/cmd/rest"
-	"github.com/bindoffice/minio/pkg/auth"
 	"github.com/bindoffice/minio/pkg/bucket/bandwidth"
 	"github.com/bindoffice/minio/pkg/certs"
-	"github.com/bindoffice/minio/pkg/color"
 	"github.com/bindoffice/minio/pkg/env"
 	"github.com/bindoffice/minio/pkg/fips"
 	"github.com/bindoffice/minio/pkg/madmin"
@@ -117,6 +115,7 @@ func serverHandleCmdArgs(ctx *cli.Context) {
 	handleCommonCmdArgs(ctx)
 
 	logger.FatalIf(CheckLocalServerAddr(globalCLIContext.Addr), "Unable to validate passed arguments")
+	checkPublicBind(globalCLIContext.Addr)
 
 	var err error
 	var setupType SetupType
@@ -553,10 +552,7 @@ func serverMain(ctx *cli.Context) {
 	// Prints the formatted startup message, if err is not nil then it prints additional information as well.
 	printStartupMessage(getAPIEndpoints(), err)
 
-	if globalActiveCred.Equal(auth.DefaultCredentials) {
-		msg := fmt.Sprintf("Detected default credentials '%s', please change the credentials immediately using 'MINIO_ROOT_USER' and 'MINIO_ROOT_PASSWORD'", globalActiveCred)
-		logger.StartupMessage(color.RedBold(msg))
-	}
+	checkDefaultCredentials()
 
 	<-globalOSSignalCh
 }
