@@ -137,6 +137,9 @@ func ValidateGatewayArguments(serverAddr, endpointAddr string) error {
 	if err := CheckLocalServerAddr(serverAddr); err != nil {
 		return err
 	}
+	if err := validatePublicBind(serverAddr); err != nil {
+		return err
+	}
 
 	if endpointAddr != "" {
 		// Reject the endpoint if it points to the gateway handler itself.
@@ -370,6 +373,8 @@ func StartGateway(ctx *cli.Context, gw Gateway) {
 		// Print gateway startup message.
 		printGatewayStartupMessage(getAPIEndpoints(), gatewayName)
 	}
+
+	checkDefaultCredentials()
 
 	handleSignals()
 }

@@ -111,11 +111,12 @@ func TestValidateGatewayArguments(t *testing.T) {
 		endpointAddr string
 		valid        bool
 	}{
-		{":9000", "http://localhost:9001", true},
-		{":9000", "http://google.com", true},
+		{"127.0.0.1:9000", "http://localhost:9001", true},
+		{"127.0.0.1:9000", "http://google.com", true},
 		{"123.123.123.123:9000", "http://localhost:9000", false},
-		{":9000", "http://localhost:9000", false},
-		{":9000", nonLoopBackIP + ":9000", false},
+		{"127.0.0.1:9000", "http://localhost:9000", false},
+		{"127.0.0.1:9000", nonLoopBackIP + ":9000", false},
+		{":9000", "http://localhost:9001", false},
 	}
 	for i, test := range testCases {
 		err := ValidateGatewayArguments(test.serverAddr, test.endpointAddr)
