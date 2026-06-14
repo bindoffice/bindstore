@@ -68,6 +68,10 @@ build: checks
 	@echo "Building bindstore binary to './bindstore'"
 	@GO111MODULE=on CGO_ENABLED=0 go build -tags kqueue -trimpath --ldflags "$(LDFLAGS)" -o $(PWD)/bindstore 1>/dev/null
 
+buildall:
+	@GO111MODULE=on CGO_ENABLED=0 GOARCH=amd64 go build -tags kqueue -trimpath --ldflags "$(LDFLAGS)" -o $(PWD)/bindstore-amd64 1>/dev/null
+	@GO111MODULE=on CGO_ENABLED=0 GOARCH=arm64 go build -tags kqueue -trimpath --ldflags "$(LDFLAGS)" -o $(PWD)/bindstore-arm64 1>/dev/null
+
 hotfix-vars:
 	$(eval LDFLAGS := $(shell MINIO_RELEASE="RELEASE" MINIO_HOTFIX="hotfix.$(shell git rev-parse --short HEAD)" go run buildscripts/gen-ldflags.go $(shell git describe --tags --abbrev=0 | \
     sed 's#RELEASE\.\([0-9]\+\)-\([0-9]\+\)-\([0-9]\+\)T\([0-9]\+\)-\([0-9]\+\)-\([0-9]\+\)Z#\1-\2-\3T\4:\5:\6Z#')))
